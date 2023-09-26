@@ -2,7 +2,7 @@ class_name GodotSupabaseUser extends Node
 
 ## AUTH ##
 var access_token: String
-var token_type: String
+var token_type: String = "bearer"
 var refresh_token: String
 var expires_in: int
 var expires_at: int 
@@ -12,7 +12,6 @@ var id: String
 var aud: String
 var role: String
 var email: String
-var email_confirmed_at
 var phone: String = ""
 var last_sign_in_at: String
 
@@ -24,15 +23,19 @@ var user_metadata: Dictionary = {}
 var identities: Array = []
 
 ## DATES ##
-var confirmed_at: String
+var email_confirmed_at: String
 var created_at: String
 var updated_at: String
 
 
 func initialize(params: Dictionary) -> void:
-	for key in params.keys():
-		self[key] = params[key]
-
+	for property in params.keys():
+		if property == "user":
+			for user_property in params[property].keys():
+				self[user_property] = params[property][user_property]
+		else:
+			self[property] = params[property]
+		
 ### JSON STRUCTURE EXAMPLE FROM SUPABASE ###
 #{
 #  "access_token": "eyJhbGciOiJIUzI1NiIsImtpZCI6Ik...",

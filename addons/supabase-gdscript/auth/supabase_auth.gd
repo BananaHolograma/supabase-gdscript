@@ -1,27 +1,30 @@
 class_name GodotSupabaseAuth extends Node
 
 signal signed_up(user: GodotSupabaseUser)
-signal signed_in(user: GodotSupabaseUser)
-signal error
+signal signed_in_with_password(user: GodotSupabaseUser)
+signal signed_in_with_phone(user: GodotSupabaseUser)
+signal error(error: GodotSupabaseError)
 
 
 enum ACTION_TYPE {
 	NONE,
 	SIGNUP,
-	SIGNIN
+	SIGNIN_PASSWORD,
+	SIGNIN_PHONE
 }
 
 var ACTIONS = {
 	ACTION_TYPE.NONE: "NONE",
 	ACTION_TYPE.SIGNUP: "SIGNUP",
-	ACTION_TYPE.SIGNIN: "SIGNIN"
+	ACTION_TYPE.SIGNIN_PASSWORD: "SIGNIN_PASSWORD",
+	ACTION_TYPE.SIGNIN_PHONE: "SIGNIN_PHONE"
 }
 
 var auth_endpoint: String = "{url}/auth/{version}".format({"url":GodotSupabase.CONFIGURATION["url"] , "version": GodotSupabase.current_api_version})
 
 var ENDPOINTS: Dictionary = {
 	ACTION_TYPE.SIGNUP: auth_endpoint + "/signup",
-	ACTION_TYPE.SIGNIN: auth_endpoint + "/token?grant_type=password",
+	ACTION_TYPE.SIGNIN_PASSWORD: auth_endpoint + "/token?grant_type=password",
 }
 
 
@@ -44,8 +47,8 @@ func sign_up(email: String, password: String, metadata: Dictionary = {}) -> void
 	)
 	
 	
-func sign_in(email: String, password: String) -> void:
-	current_action = ACTION_TYPE.SIGNIN
+func sign_in_with_password(email: String, password: String) -> void:
+	current_action = ACTION_TYPE.SIGNIN_PASSWORD
 	
 	GodotSupabase.HTTP_REQUEST.request(
 		ENDPOINTS[current_action], 
@@ -53,11 +56,24 @@ func sign_in(email: String, password: String) -> void:
 		HTTPClient.METHOD_POST,
 		JSON.stringify({"email": email, "password": password})
 	)
+
+
+func sign_in_with_phone(phone: String, password: String) -> void:
+	current_action = ACTION_TYPE.SIGNIN_PHONE
 	
+	GodotSupabase.HTTP_REQUEST.request(
+		ENDPOINTS[current_action], 
+		GodotSupabase.CONFIGURATION["global"]["headers"],
+		HTTPClient.METHOD_POST,
+		JSON.stringify({"phone": phone, "password": password})
+	)
+
+
 func _set_auth_user(data: Dictionary, overwrite: bool = false) -> void:
 	if user == null or overwrite:
 		user = GodotSupabaseUser.new()
 		user.initialize(data)
+		print(data)
 		
 	
 func on_request_completed(result : int, response_code : int, headers : PackedStringArray, body : PackedByteArray) -> void:
@@ -68,11 +84,16 @@ func on_request_completed(result : int, response_code : int, headers : PackedStr
 			ACTION_TYPE.SIGNUP:
 				_set_auth_user(content)
 				signed_up.emit(user)
-			ACTION_TYPE.SIGNIN:
+			ACTION_TYPE.SIGNIN_PASSWORD:
 				_set_auth_user(content["user"])
-				signed_in.emit(user)
+				signed_in_with_password.emit(user)
+			ACTION_TYPE.SIGNIN_PHONE:
+				_set_auth_user(content["user"])
+				signed_in_with_phone.emit(user)
 	else:
-		var error = GodotSupabaseError.new(content, ACTIONS[current_action])
-		push_error(error)
+		print("content ", content)
+		var supabase_error = GodotSupabaseError.new(content, ACTIONS[current_action])
+		error.emit(supabase_error)
+		push_error(supabase_error)
 		
 	current_action = ACTION_TYPE.NONE
