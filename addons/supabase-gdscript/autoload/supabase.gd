@@ -61,8 +61,8 @@ func create_client(url, anon_key, config: Dictionary = {}):
 	
 	CONFIGURATION["url"] = url
 	CONFIGURATION["anon_key"] = anon_key
-	CONFIGURATION["global"]["headers"].append("apikey: {key}".format({"key": CONFIGURATION["anon_key"]}))
-	CONFIGURATION["global"]["headers"].append("Authorization: Bearer {key}".format({"key": CONFIGURATION["anon_key"]}))
+	CONFIGURATION["global"]["headers"].append("apikey: {key}".format({"key": anon_key}))
+	CONFIGURATION["global"]["headers"].append("Authorization: Bearer {key}".format({"key": anon_key}))
 	
 	CONFIGURATION.merge(config, true)
 	

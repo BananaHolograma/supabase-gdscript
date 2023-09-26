@@ -24,6 +24,7 @@ var user_metadata: Dictionary = {}
 var identities: Array = []
 
 ## DATES ##
+var confirmed_at: String
 var created_at: String
 var updated_at: String
 
