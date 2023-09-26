@@ -1,7 +1,7 @@
 class_name GodotEnvironmentHelper extends Node
 
 
-@export var ENVIRONMENT_FILES_PATH: String = "res://"
+@export var ENVIRONMENT_FILES_PATH: String = "res://addons/supabase-gdscript"
 
 
 ## Retrieve the value of an environment variable by its key.

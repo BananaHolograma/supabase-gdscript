@@ -18,6 +18,11 @@ config/icon="res://icon.svg"
 
 Helpers="*res://addons/supabase-gdscript/autoload/helpers.gd"
 GodotEnvironment="*res://addons/supabase-gdscript/autoload/godotenv.gd"
+GodotSupabase="*res://addons/supabase-gdscript/autoload/supabase.gd"
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/supabase-gdscript/plugin.cfg")
 
 [rendering]
 
