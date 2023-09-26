@@ -5,10 +5,10 @@ const API_VERSIONS = {
 }
 
 var current_api_version = API_VERSIONS["V1"]
-var HTTP_REQUEST:  HTTPRequest
 
 ## MODULES ##
 var auth: GodotSupabaseAuth
+var database: GodotSupabaseDatabase
 
 var CONFIGURATION: Dictionary = {
 	"url": "",
@@ -45,9 +45,8 @@ func _ready():
 	GodotEnvironment.remove_var("supabaseUrl")
 	GodotEnvironment.remove_var("supabaseKey")
 	
-	add_http_node()
-	
 	auth = GodotSupabaseAuth.new()
+	database = GodotSupabaseDatabase.new()
 
 
 func create_client(url, anon_key, config: Dictionary = {}):
@@ -66,10 +65,15 @@ func create_client(url, anon_key, config: Dictionary = {}):
 	CONFIGURATION["global"]["headers"].append("Authorization: Bearer ")
 	
 	CONFIGURATION.merge(config, true)
-	
-func add_http_node():
+
+
+func http_request(on_request_completed: Callable) -> HTTPRequest:
 	var http_request = HTTPRequest.new()
-	http_request.name = "GodotSupabaseHttpRequest"
+	
+	http_request.use_threads = true
 	add_child(http_request)
-	HTTP_REQUEST = get_child(0)
+	http_request.request_completed.connect(on_request_completed.bind(http_request))
+	
+	return http_request
+	
 
