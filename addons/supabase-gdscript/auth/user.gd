@@ -2,7 +2,7 @@ class_name GodotSupabaseUser extends Node
 
 ## AUTH ##
 var access_token: String
-var token_type: String = "bearer"
+var token_type: String
 var refresh_token: String
 var expires_in: int
 var expires_at: int 
@@ -25,6 +25,7 @@ var identities: Array = []
 ## DATES ##
 var email_confirmed_at: String
 var confirmed_at: String
+var confirmation_sent_at: String
 var created_at: String
 var updated_at: String
 

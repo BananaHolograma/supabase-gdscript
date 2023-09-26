@@ -26,7 +26,8 @@ var CONFIGURATION: Dictionary = {
 		"headers": PackedStringArray([
 			"X-Client-Info: supabase-gdscript/{version}".format({"version": Helpers.get_plugin_version()}),
 			"Content-Type: application/json",
-			"Accept: application/json"
+			"Accept: application/json",
+			"Prefer: return=representation",
 			])
 		}
 }
@@ -62,7 +63,7 @@ func create_client(url, anon_key, config: Dictionary = {}):
 	CONFIGURATION["url"] = url
 	CONFIGURATION["anon_key"] = anon_key
 	CONFIGURATION["global"]["headers"].append("apikey: {key}".format({"key": anon_key}))
-	CONFIGURATION["global"]["headers"].append("Authorization: Bearer {key}".format({"key": anon_key}))
+	CONFIGURATION["global"]["headers"].append("Authorization: Bearer ")
 	
 	CONFIGURATION.merge(config, true)
 	
