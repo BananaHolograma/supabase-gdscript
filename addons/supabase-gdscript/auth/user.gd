@@ -24,6 +24,7 @@ var identities: Array = []
 
 ## DATES ##
 var email_confirmed_at: String
+var confirmed_at: String
 var created_at: String
 var updated_at: String
 
