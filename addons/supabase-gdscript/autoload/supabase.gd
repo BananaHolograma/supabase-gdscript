@@ -27,7 +27,6 @@ var CONFIGURATION: Dictionary = {
 			"X-Client-Info: supabase-gdscript/{version}".format({"version": Helpers.get_plugin_version()}),
 			"Content-Type: application/json",
 			"Accept: application/json",
-			"Prefer: return=representation",
 			])
 		}
 }
