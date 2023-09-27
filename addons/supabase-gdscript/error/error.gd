@@ -10,7 +10,8 @@ var action_type: String = "NONE"
 
 
 func _init(params: Dictionary = {}, action: String = "NONE"):
-	for param in params.keys().filter(func(key: String): return key in ["code", "msg", "message", "hint", "type"]):
+	print(params)
+	for param in params.keys().filter(func(key: String): return params[key] != null and key in ["code", "msg", "message", "hint", "type"]):
 		self[param] = params[param]
 	action_type = action
 

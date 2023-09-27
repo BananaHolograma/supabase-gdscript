@@ -291,7 +291,7 @@ func insert(fields: Array, upsert: bool = false) -> GodotSupabaseDatabase:
 func update(fields: Dictionary) -> GodotSupabaseDatabase:
 	current_query["type"] = TYPES.UPDATE
 	current_query["verb"] = QUERY_TYPES[TYPES.UPDATE]
-	current_query["method"] = HTTPClient.METHOD_PUT
+	current_query["method"] = HTTPClient.METHOD_PATCH
 	current_query["payload"] = fields
 	
 	
@@ -319,7 +319,7 @@ func exec():
 	if current_query["query"].is_empty():
 		return
 	
-	if current_query["type"] in [QUERY_TYPES.UPDATE, QUERY_TYPES.DELETE] and current_query["filters"].is_empty():
+	if current_query["type"] in [TYPES.UPDATE, TYPES.DELETE] and current_query["filters"].is_empty():
 		push_error("GodotSupabaseDatabase: You cannot {action} without applying any filters to the query".format({"action": current_query["verb"]}))
 		return
 		
