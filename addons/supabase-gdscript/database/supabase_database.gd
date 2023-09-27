@@ -31,7 +31,7 @@ func filters(filters: Array[Dictionary]) -> GodotSupabaseDatabase:
 	return self
 
 
-func filter(column: String, type: String, value, parameters: Dictionary = {}) -> GodotSupabaseDatabase:
+func filter(column: String, value, type: String, parameters: Dictionary = {}) -> GodotSupabaseDatabase:
 	type = type.to_lower().strip_edges()
 	
 	match(type):
@@ -55,6 +55,8 @@ func filter(column: String, type: String, value, parameters: Dictionary = {}) ->
 			like(column, value)	
 		"ilike":
 			ilike(column, value)
+		"not":
+			Not(column, parameters["operator"], value)
 		"contains":
 			contains(column, value)
 		"contained_by":
@@ -73,6 +75,8 @@ func filter(column: String, type: String, value, parameters: Dictionary = {}) ->
 			overlaps(column, value)
 		"text_search":
 			text_search(column, value, parameters)
+		"match":
+			Match(parameters)
 	return self 
 
 
@@ -81,14 +85,24 @@ func eq(column: String, value: String) -> GodotSupabaseDatabase:
  
 	return self
 	
+## Shorthand for multiple eq
+func Match(entries: Dictionary) -> GodotSupabaseDatabase:
+	for column in entries.keys():
+		eq(column, entries[column])
+		
+	return self
+	
 ## Using the eq() filter doesn't work when filtering for null.
 ## Instead, you need to use is().
-func Is(column: String, value:):
+func Is(column: String, value) -> GodotSupabaseDatabase:
+	if value == null:
+		value = "null"
+	
 	current_query["filters"] += "&{column}=is.{value}".format({"column": column, "value": value})
 	
 	return self
 
-func In(column: String, values: PackedStringArray):
+func In(column: String, values: PackedStringArray) -> GodotSupabaseDatabase:
 	current_query["filters"] += "&{column}=in.({values})".format({"column": column, "values": ",".join(values)})
 	
 	return self
@@ -129,6 +143,13 @@ func ilike(column: String, pattern: String) -> GodotSupabaseDatabase:
 	
 	return self
 
+func Not(column: String, operator: String, value) -> GodotSupabaseDatabase:
+	if value == null:
+		value = "null"
+	
+	current_query["filters"] += "&{column}=not.{operator}.{value}".format({"column": column, "operator": operator, "value": value})
+	
+	return self
 
 ## range types can be inclusive '[', ']' or exclusive '(', ')' so just
 ## keep it simple and accept a string
@@ -203,11 +224,16 @@ func text_search(column: String, query: String, parameters: Dictionary = {}) -> 
 			
 	return self
 
+
 func query(table: String) -> GodotSupabaseDatabase:
 	reset_query()
 	current_query["query"] = endpoint + table + "?"
 	
 	return self
+
+
+func from(table: String) -> GodotSupabaseDatabase:
+	return query(table)
 
 
 func select(columns : PackedStringArray = PackedStringArray(["*"])) -> GodotSupabaseDatabase:
@@ -256,6 +282,13 @@ func on_request_completed(result : int, response_code : int, headers : PackedStr
 	var content = {} if data.is_empty() else JSON.parse_string(data)
 	
 	print(content)
-	
+	if result == HTTPRequest.RESULT_SUCCESS and response_code in [200, 201, 204]:
+		pass
+	else:
+		pass
+#		var supabase_error = GodotSupabaseError.new(content, ACTIONS[current_action])
+#		error.emit(supabase_error)
+#		push_error(supabase_error)
+
 	reset_query()
 	http_handler.queue_free()
