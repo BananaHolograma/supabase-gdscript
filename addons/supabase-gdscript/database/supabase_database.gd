@@ -31,17 +31,45 @@ func filter(column: String, type: String, value) -> GodotSupabaseDatabase:
 	
 	match(type):
 		"eq":
-			eq(column, value)
+			eq(column, str(value))
+		"is":
+			Is(column, value)
+		"in":
+			In(column, value)
 		"neq":
-			neq(column, value)
-
+			neq(column, str(value))
+		"gt":
+			gt(column, value)
+		"gte":
+			gte(column, value)			
+		"lt":
+			lt(column, value)
+		"lte":
+			lte(column, value)
+		"like":
+			like(column, value)	
+		"ilike":
+			ilike(column, value)
+		"contains":
+			contains(column, value)
 	return self 
-
 
 
 func eq(column: String, value: String) -> GodotSupabaseDatabase:
 	current_query["filters"] += "&{column}=eq.{value}".format({"column": column, "value": value})
  
+	return self
+	
+## Using the eq() filter doesn't work when filtering for null.
+## Instead, you need to use is().
+func Is(column: String, value:):
+	current_query["filters"] += "&{column}=is.{value}".format({"column": column, "value": value})
+	
+	return self
+
+func In(column: String, values: PackedStringArray):
+	current_query["filters"] += "&{column}=in.({values})".format({"column": column, "values": ",".join(values)})
+	
 	return self
 
 
@@ -49,6 +77,60 @@ func neq(column: String, value: String) -> GodotSupabaseDatabase:
 	current_query["filters"] += "&{column}=neq.{value}".format({"column": column, "value": value})
 	
 	return self
+
+func gt(column: String, value) -> GodotSupabaseDatabase:
+	current_query["filters"] += "&{column}=gt.{value}".format({"column": column, "value": value})
+
+	return self
+
+func gte(column: String, value) -> GodotSupabaseDatabase:
+	current_query["filters"] += "&{column}=gte.{value}".format({"column": column, "value": value})
+
+	return self
+
+func lt(column: String, value) -> GodotSupabaseDatabase:
+	current_query["filters"] += "&{column}=lt.{value}".format({"column": column, "value": value})
+
+	return self
+
+func lte(column: String, value) -> GodotSupabaseDatabase:
+	current_query["filters"] += "&{column}=lte.{value}".format({"column": column, "value": value})
+
+	return self
+
+func like(column: String, pattern: String) -> GodotSupabaseDatabase:
+	current_query["filters"] += "&{column}=like.{pattern}".format({"column": column, "pattern": pattern})
+	
+	return self
+
+func ilike(column: String, pattern: String) -> GodotSupabaseDatabase:
+	current_query["filters"] += "&{column}=ilike.{pattern}".format({"column": column, "pattern": pattern})
+	
+	return self
+
+
+## range types can be inclusive '[', ']' or exclusive '(', ')' so just
+## keep it simple and accept a string
+func contains(column, value) -> GodotSupabaseDatabase:
+	if typeof(value) == TYPE_STRING:
+		current_query["filters"] += "&{column}=cs.{value}".format({"column": column, "value": value})
+	elif value is Array:
+		current_query["filters"] += "&{column}=cs.{{value}}".format({"column": column, "value": ",".join(value)})
+	else :
+		current_query["filters"] += "&{column}=cs.{value}".format({"column": column, "value": JSON.stringify(value)})
+	
+	return self
+
+func contained_by(column, value) -> GodotSupabaseDatabase:
+	if typeof(value) == TYPE_STRING:
+		current_query["filters"] += "&{column}=cd.{value}".format({"column": column, "value": value})
+	elif value is Array:
+		current_query["filters"] += "&{column}=cd.{{value}}".format({"column": column, "value": ",".join(value)})
+	else :
+		current_query["filters"] += "&{column}=cd.{value}".format({"column": column, "value": JSON.stringify(value)})
+	
+	return self
+
 
 
 func query(table: String) -> GodotSupabaseDatabase:
@@ -81,6 +163,7 @@ func exec():
 		return
 	
 	print(current_query["query"] + current_query["filters"])
+
 	GodotSupabase.http_request(on_request_completed).request(
 		current_query["query"] + current_query["filters"], 
 		current_query["headers"], 
