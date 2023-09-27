@@ -1,6 +1,28 @@
 class_name GodotSupabaseDatabase extends Node
 
+signal selected(query: Dictionary)
+signal inserted(query: Dictionary)
+signal updated(query: Dictionary)
+signal deleted(query: Dictionary)
+signal error
+
+
 ## https://supabase.com/docs/reference/javascript/using-filters
+enum TYPES {
+	SELECT,
+	INSERT,
+	UPDATE,
+	UPSERT,
+	DELETE
+}
+
+var QUERY_TYPES = {
+	TYPES.SELECT: "SELECT",
+	TYPES.INSERT: "INSERT",
+	TYPES.UPDATE: "UPDATE",
+	TYPES.UPSERT: "UPSERT",
+	TYPES.DELETE: "DELETE",
+}
 
 var endpoint: String = "{base}/rest/{version}/".format({
 	"base": GodotSupabase.CONFIGURATION["url"],
@@ -9,6 +31,8 @@ var endpoint: String = "{base}/rest/{version}/".format({
 
 var current_query: Dictionary = {
 	"query": "",
+	"type": "",
+	"verb": "",
 	"method": "", 
 	"filters": "",
 	"payload": [],
@@ -244,6 +268,8 @@ func from(table: String) -> GodotSupabaseDatabase:
 ## https://supabase.com/docs/guides/api/joins-and-nesting
 func select(columns : PackedStringArray = PackedStringArray(["*"])) -> GodotSupabaseDatabase:
 	current_query["query"] += "select=" + ",".join(columns)
+	current_query["type"] = TYPES.SELECT
+	current_query["verb"] = QUERY_TYPES[TYPES.SELECT]
 	current_query["method"] = HTTPClient.METHOD_GET
 	current_query["headers"].append_array(read_headers)
 	
@@ -251,6 +277,8 @@ func select(columns : PackedStringArray = PackedStringArray(["*"])) -> GodotSupa
 	
 	
 func insert(fields: Array, upsert: bool = false) -> GodotSupabaseDatabase:
+	current_query["type"] = TYPES.INSERT
+	current_query["verb"] = QUERY_TYPES[TYPES.INSERT]
 	current_query["method"] = HTTPClient.METHOD_POST
 	current_query["payload"] = fields
 	
@@ -259,11 +287,42 @@ func insert(fields: Array, upsert: bool = false) -> GodotSupabaseDatabase:
 		
 	return self
 
+## update() should always be combined with Filters to target the item(s) you wish to update
+func update(fields: Dictionary) -> GodotSupabaseDatabase:
+	current_query["type"] = TYPES.UPDATE
+	current_query["verb"] = QUERY_TYPES[TYPES.UPDATE]
+	current_query["method"] = HTTPClient.METHOD_PUT
+	current_query["payload"] = fields
+	
+	
+	return self 
+
+## Primary keys must be included in values to use upsert.
+## https://www.cockroachlabs.com/blog/sql-upsert/
+func upsert(fields) -> GodotSupabaseDatabase:
+	current_query["type"] = TYPES.UPSERT
+	current_query["verb"] = QUERY_TYPES[TYPES.UPSERT]
+	current_query["method"] = HTTPClient.METHOD_PUT
+	current_query["payload"] = fields
+	
+	return self 
+
+## delete() should always be combined with filters to target the item(s) you wish to delete
+func delete() -> GodotSupabaseDatabase:
+	current_query["type"] = TYPES.DELETE
+	current_query["verb"] = QUERY_TYPES[TYPES.DELETE]
+	current_query["method"] = HTTPClient.METHOD_DELETE
+	
+	return self
 
 func exec():
 	if current_query["query"].is_empty():
 		return
 	
+	if current_query["type"] in [QUERY_TYPES.UPDATE, QUERY_TYPES.DELETE] and current_query["filters"].is_empty():
+		push_error("GodotSupabaseDatabase: You cannot {action} without applying any filters to the query".format({"action": current_query["verb"]}))
+		return
+		
 	print(current_query["query"] + current_query["filters"])
 
 	GodotSupabase.http_request(on_request_completed).request(
@@ -289,12 +348,19 @@ func on_request_completed(result : int, response_code : int, headers : PackedStr
 	
 	print(content)
 	if result == HTTPRequest.RESULT_SUCCESS and response_code in [200, 201, 204]:
-		pass
+		match(current_query["type"]):
+			TYPES.SELECT:
+				selected.emit(current_query)
+			TYPES.INSERT:
+				inserted.emit(current_query)
+			TYPES.UPDATE:
+				updated.emit(current_query)
+			TYPES.DELETE:
+				deleted.emit(current_query)
 	else:
-		pass
-#		var supabase_error = GodotSupabaseError.new(content, ACTIONS[current_action])
-#		error.emit(supabase_error)
-#		push_error(supabase_error)
+		var supabase_error = GodotSupabaseError.new(content, current_query["verb"])
+		error.emit(supabase_error)
+		push_error(supabase_error)
 
 	reset_query()
 	http_handler.queue_free()
