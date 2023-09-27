@@ -37,6 +37,8 @@ func filter(column: String, value, type: String, parameters: Dictionary = {}) ->
 	match(type):
 		"eq":
 			eq(column, str(value))
+		"match":
+			Match(parameters)
 		"is":
 			Is(column, value)
 		"in":
@@ -75,8 +77,6 @@ func filter(column: String, value, type: String, parameters: Dictionary = {}) ->
 			overlaps(column, value)
 		"text_search":
 			text_search(column, value, parameters)
-		"match":
-			Match(parameters)
 	return self 
 
 
@@ -224,6 +224,12 @@ func text_search(column: String, query: String, parameters: Dictionary = {}) -> 
 			
 	return self
 
+func Or(filters: String, foreign_table: String = "") -> GodotSupabaseDatabase:
+	var column: String = "or" if foreign_table.is_empty() else foreign_table + ".or"
+	current_query["filters"] += "&{column}=({filters})".format({"column": column, "filters": filters})
+	current_query["filters"].replacen(" ", "%20")
+	return self
+	
 
 func query(table: String) -> GodotSupabaseDatabase:
 	reset_query()
@@ -235,7 +241,7 @@ func query(table: String) -> GodotSupabaseDatabase:
 func from(table: String) -> GodotSupabaseDatabase:
 	return query(table)
 
-
+## https://supabase.com/docs/guides/api/joins-and-nesting
 func select(columns : PackedStringArray = PackedStringArray(["*"])) -> GodotSupabaseDatabase:
 	current_query["query"] += "select=" + ",".join(columns)
 	current_query["method"] = HTTPClient.METHOD_GET

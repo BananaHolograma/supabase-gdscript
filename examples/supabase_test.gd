@@ -5,6 +5,9 @@ extends Node2D
 func _ready():
 	await GodotSupabase.auth.sign_in_with_email("hola4@amigos.com", "password").signed_in_with_email
 #	GodotSupabase.database.from("countries").select(["id"]).Not("name", "is", null).exec()
+#	GodotSupabase.database.from("countries").select(["id"]).Or('id.eq.3,name.eq.Algeria').exec()
+#	GodotSupabase.database.query("countries").select(["name", "cities!inner(name)"]).Or('country_id.eq.1,name.eq.Beijing', 'cities').exec()
+
 #	GodotSupabase.database.query("rooms").select().eq("private", "false").neq("waiting_for_players", "false").exec()
 #	GodotSupabase.database.query("issues").select(["title"]).contains("tags", ["is:open", "severity:low"]).exec()
 #	GodotSupabase.database.query("clowns").select(["name"]).contains("address", {"postcode": 90210}).exec()
