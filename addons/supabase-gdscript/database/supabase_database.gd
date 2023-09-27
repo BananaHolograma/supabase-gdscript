@@ -21,12 +21,17 @@ var upsert_headers = PackedStringArray(["Prefer: resolution=merge-duplicates"])
 
 func filters(filters: Array[Dictionary]) -> GodotSupabaseDatabase:
 	for filter_data in filters:
-		filter(filter_data["column"], filter_data["type"], filter_data["value"])
+		filter(
+			filter_data["column"], 
+			filter_data["type"], 
+			filter_data["value"],
+			filter_data["parameters"]
+		)
 		
 	return self
 
 
-func filter(column: String, type: String, value) -> GodotSupabaseDatabase:
+func filter(column: String, type: String, value, parameters: Dictionary = {}) -> GodotSupabaseDatabase:
 	type = type.to_lower().strip_edges()
 	
 	match(type):
@@ -52,6 +57,22 @@ func filter(column: String, type: String, value) -> GodotSupabaseDatabase:
 			ilike(column, value)
 		"contains":
 			contains(column, value)
+		"contained_by":
+			contained_by(column, value)
+		"range_gt":
+			range_gt(column, value)
+		"range_gte":
+			range_gte(column, value)
+		"range_lt":
+			range_lt(column, value)
+		"range_lte":
+			range_lte(column, value)
+		"range_adjacent":
+			range_adjacent(column, value)
+		"overlaps":
+			overlaps(column, value)
+		"text_search":
+			text_search(column, value, parameters)
 	return self 
 
 
@@ -111,27 +132,76 @@ func ilike(column: String, pattern: String) -> GodotSupabaseDatabase:
 
 ## range types can be inclusive '[', ']' or exclusive '(', ')' so just
 ## keep it simple and accept a string
-func contains(column, value) -> GodotSupabaseDatabase:
+func contains(column: String, value) -> GodotSupabaseDatabase:
 	if typeof(value) == TYPE_STRING:
 		current_query["filters"] += "&{column}=cs.{value}".format({"column": column, "value": value})
 	elif value is Array:
 		current_query["filters"] += "&{column}=cs.{{value}}".format({"column": column, "value": ",".join(value)})
-	else :
+	else:
 		current_query["filters"] += "&{column}=cs.{value}".format({"column": column, "value": JSON.stringify(value)})
 	
 	return self
 
-func contained_by(column, value) -> GodotSupabaseDatabase:
+func contained_by(column: String, value) -> GodotSupabaseDatabase:
 	if typeof(value) == TYPE_STRING:
 		current_query["filters"] += "&{column}=cd.{value}".format({"column": column, "value": value})
 	elif value is Array:
 		current_query["filters"] += "&{column}=cd.{{value}}".format({"column": column, "value": ",".join(value)})
-	else :
+	else:
 		current_query["filters"] += "&{column}=cd.{value}".format({"column": column, "value": JSON.stringify(value)})
 	
 	return self
 
 
+func range_gt(column: String, value: String) -> GodotSupabaseDatabase:
+	current_query["filters"] += "&{column}=sr.{value}".format({"column": column, "value": value})
+
+	return self
+
+func range_gte(column: String, value: String) -> GodotSupabaseDatabase:
+	current_query["filters"] += "&{column}=nxl.{value}".format({"column": column, "value": value})
+
+	return self
+
+func range_lt(column: String, value: String) -> GodotSupabaseDatabase:
+	current_query["filters"] += "&{column}=sl.{value}".format({"column": column, "value": value})
+
+	return self
+
+func range_lte(column: String, value: String) -> GodotSupabaseDatabase:
+	current_query["filters"] += "&{column}=nxr.{value}".format({"column": column, "value": value})
+
+	return self
+
+func range_adjacent(column: String, value: String) -> GodotSupabaseDatabase:
+	current_query["filters"] += "&{column}=adj.{value}".format({"column": column, "value": value})
+
+	return self
+
+func overlaps(column: String, value) -> GodotSupabaseDatabase:
+	if typeof(value) == TYPE_STRING:
+		current_query["filters"] += "&{column}=ov.{value}".format({"column": column, "value": value})
+	elif value is Array:
+		current_query["filters"] += "&{column}=ov.{{value}}".format({"column": column, "value": ",".join(value)})
+		
+	return self
+
+func text_search(column: String, query: String, parameters: Dictionary = {}) -> GodotSupabaseDatabase:
+	var type: String = ""
+	var config = "(" + parameters["config"] + ")" if parameters.has("config") else ""
+	
+	if parameters.has("type"):
+		match(parameters["type"]):
+			"plain":
+				type = "pl"
+			"phrase":
+				type = "ph"
+			"websearch":
+				type = "w"
+				
+	current_query["filters"] += "&{column}={type}fts{config}.{query}".format({"column": column, "type": type, "config": config, "query": query})			
+			
+	return self
 
 func query(table: String) -> GodotSupabaseDatabase:
 	reset_query()
