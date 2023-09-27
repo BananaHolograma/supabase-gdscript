@@ -40,8 +40,6 @@ var current_query: Dictionary = {
 }
 
 var read_headers = PackedStringArray(["Prefer: return=representation"])
-var upsert_headers = PackedStringArray(["Prefer: resolution=merge-duplicates"])
-
 
 func filters(filters: Array[Dictionary]) -> GodotSupabaseDatabase:
 	for filter_data in filters:
@@ -276,36 +274,48 @@ func select(columns : PackedStringArray = PackedStringArray(["*"])) -> GodotSupa
 	return self
 	
 	
-func insert(fields: Array, upsert: bool = false) -> GodotSupabaseDatabase:
+func insert(fields: Array, config: Dictionary = {}) -> GodotSupabaseDatabase:
 	current_query["type"] = TYPES.INSERT
 	current_query["verb"] = QUERY_TYPES[TYPES.INSERT]
 	current_query["method"] = HTTPClient.METHOD_POST
 	current_query["payload"] = fields
+	current_query["headers"].append_array( _build_prefer_headers(config))
 	
-	if upsert:
-		current_query["headers"].append_array(upsert_headers)
-		
 	return self
 
+
+## Primary keys must be included in values to use upsert.
+## fields can be both,array for bulk and dictionary for individual
+## https://www.cockroachlabs.com/blog/sql-upsert/
+func upsert(fields: Array, config: Dictionary = {}) -> GodotSupabaseDatabase:
+	current_query["type"] = TYPES.UPSERT
+	current_query["verb"] = QUERY_TYPES[TYPES.UPSERT]
+	current_query["method"] = HTTPClient.METHOD_POST
+	current_query["payload"] = fields
+	current_query["headers"].append_array( _build_prefer_headers(config))
+	
+	if config.has("on_conflict"):
+		current_query["filters"] = "&on-conflict={column}".format({"column": config["on_conflict"]})
+
+	return self 
+
 ## update() should always be combined with Filters to target the item(s) you wish to update
-func update(fields: Dictionary) -> GodotSupabaseDatabase:
+## fields can be both, array for bulk and dictionary for individual
+## count value can be "exact","planned","estimated"
+func update(fields: Dictionary, count: String = "") -> GodotSupabaseDatabase:
 	current_query["type"] = TYPES.UPDATE
 	current_query["verb"] = QUERY_TYPES[TYPES.UPDATE]
 	current_query["method"] = HTTPClient.METHOD_PATCH
 	current_query["payload"] = fields
 	
+	if count in ["exact","planned","estimated"]:
+		current_query["headers"].append_array(PackedStringArray(["Prefer: count=" + count]))
+	else:
+		if not count.is_empty():
+			push_error("GodotSupabaseDatabase: The value count {count} on UPDATE is not allowed, allowed values are 'exact','planned', 'estimated'")
 	
 	return self 
 
-## Primary keys must be included in values to use upsert.
-## https://www.cockroachlabs.com/blog/sql-upsert/
-func upsert(fields) -> GodotSupabaseDatabase:
-	current_query["type"] = TYPES.UPSERT
-	current_query["verb"] = QUERY_TYPES[TYPES.UPSERT]
-	current_query["method"] = HTTPClient.METHOD_PUT
-	current_query["payload"] = fields
-	
-	return self 
 
 ## delete() should always be combined with filters to target the item(s) you wish to delete
 func delete() -> GodotSupabaseDatabase:
@@ -314,6 +324,7 @@ func delete() -> GodotSupabaseDatabase:
 	current_query["method"] = HTTPClient.METHOD_DELETE
 	
 	return self
+
 
 func exec():
 	if current_query["query"].is_empty():
@@ -341,6 +352,18 @@ func reset_query() -> void:
 	"payload": [],
 	"headers": GodotSupabase.CONFIGURATION["global"]["headers"]
 }
+
+
+func _build_prefer_headers(config: Dictionary) -> PackedStringArray:
+	var prefer_headers = "Prefer: resolution={type}-duplicates".format({"type": "ignore" if config.has("ignore_duplicates") else "merge"})
+	
+	if config.has("count") and config["count"] in ["exact","planned","estimated"]:
+		prefer_headers += ",count=" + config["count"]
+	if config.has("default_to_null") and not config["default_to_null"]:
+		prefer_headers += ",missing=default"
+	
+	return PackedStringArray([prefer_headers])
+	
 
 func on_request_completed(result : int, response_code : int, headers : PackedStringArray, body : PackedByteArray, http_handler: HTTPRequest) -> void:
 	var data: String = body.get_string_from_utf8()

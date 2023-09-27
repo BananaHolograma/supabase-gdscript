@@ -8,7 +8,7 @@ func _ready():
 #	GodotSupabase.database.from("countries").select(["id"]).Or('id.eq.3,name.eq.Algeria').exec()
 #	GodotSupabase.database.query("countries").select(["name", "cities!inner(name)"]).Or('country_id.eq.1,name.eq.Beijing', 'cities').exec()
 ## THE SELECT ALLOW RETURN ON UPDATE
-#	GodotSupabase.database.query("countries").select().update({"name": "ESPANA"}).eq("id", "1").exec()
+	GodotSupabase.database.query("cities").delete().eq("id", "1").exec()
 #	GodotSupabase.database.query("rooms").select().eq("private", "false").neq("waiting_for_players", "false").exec()
 #	GodotSupabase.database.query("issues").select(["title"]).contains("tags", ["is:open", "severity:low"]).exec()
 #	GodotSupabase.database.query("clowns").select(["name"]).contains("address", {"postcode": 90210}).exec()
