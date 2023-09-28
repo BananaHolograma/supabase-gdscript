@@ -4,16 +4,17 @@ extends Node2D
 # Called when the node enters the scene tree for the first time.
 func _ready():
 #	await GodotSupabase.auth.sign_in_with_email("hola4@amigos.com", "password").signed_in_with_email
-#	GodotSupabase.database.from("countries").select(["id"]).Not("name", "is", null).exec()
+	GodotSupabase.database.from("countries").select(["id"]).Not("name", "is", null).exec()
 #	GodotSupabase.database.from("countries").select(["id"]).Or('id.eq.3,name.eq.Algeria').exec()
 #	GodotSupabase.database.query("countries").select(["name", "cities!inner(name)"]).Or('country_id.eq.1,name.eq.Beijing', 'cities').exec()
 ## THE SELECT ALLOW RETURN ON UPDATE
 #	GodotSupabase.database.query("cities").delete().eq("id", "1").exec()
-#	GodotSupabase.database.query("countries").select(["name", "cities(name)"]).order("name", {"ascending": false, "foreign_table": "cities"}).exec()
-
+#	GodotSupabase.database.query("countries").select(["name", "cities(name)"]).limit(1, "cities").order("name", {"ascending": false, "foreign_table": "cities"}).exec()
+#	GodotSupabase.database.query("countries").select().limit_range(0,1).exec()
+#	GodotSupabase.database.Rpc("echo", {"say": "HI BRO"}, {"head": false}).exec()
 #	GodotSupabase.database.query("rooms").select().eq("private", "false").neq("waiting_for_players", "false").exec()
 #	GodotSupabase.database.query("issues").select(["title"]).contains("tags", ["is:open", "severity:low"]).exec()
-#	GodotSupabase.database.query("clowns").select(["name"]).contains("address", {"postcode": 90210}).exec()
+	GodotSupabase.database.query("clowns").select(["name"]).contains("address", {"postcode": 90210}).exec()
 #	GodotSupabase.database.query("issues").select(["title"]).overlaps("tags", ['is:closed', 'severity:high']).exec()
 #	GodotSupabase.database.query("issues").select(["title"]).text_search("title", "'Cache' & 'cat'", {"type": "plain", "config": "english"}).exec()
 #	GodotSupabase.database.query("rooms").select(["code", "host"]).Match({"host": "godgamedev", "scenario": "Dungeon", "server_name": "POLITOXICOMANO"}).exec()

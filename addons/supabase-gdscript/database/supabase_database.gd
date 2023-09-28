@@ -14,7 +14,8 @@ enum TYPES {
 	INSERT,
 	UPDATE,
 	UPSERT,
-	DELETE
+	DELETE,
+	RPC
 }
 
 var QUERY_TYPES = {
@@ -23,6 +24,7 @@ var QUERY_TYPES = {
 	TYPES.UPDATE: "UPDATE",
 	TYPES.UPSERT: "UPSERT",
 	TYPES.DELETE: "DELETE",
+	TYPES.RPC: "RPC"
 }
 
 var endpoint: String = "{base}/rest/{version}/".format({
@@ -279,6 +281,45 @@ func order(column: String, config: Dictionary = {"ascending": false}) -> GodotSu
 	
 	return self
 
+
+func limit(count: int, foreign_table: String = "") -> GodotSupabaseDatabase:
+	var key: String = "limit" if foreign_table.is_empty() else "{foreign_table}.limit".format({"foreign_table": foreign_table})
+	current_query["filters"] += "&{key}={count}".format({"key": key, "count": count})
+	
+	return self
+
+
+func limit_range(from: int, to: int, foreign_table: String = "") -> GodotSupabaseDatabase:
+	var key_offset: String = "offset" if foreign_table.is_empty() else "{foreign_table}.offset"
+	var key_limit: String = "limit" if foreign_table.is_empty() else "{foreign_table}.limit"
+	
+	current_query["filters"] += "&{key_offset}={from}&{key_limit}={to}".format({"key_offset": key_offset, "from": from, "key_limit": key_limit, "to": (to - from + 1)})
+	
+	return self
+	
+func Rpc(function_name: String, arguments: Dictionary = {}, config: Dictionary = {}) -> GodotSupabaseDatabase:
+	reset_query(["filters"])
+
+	current_query["query"] = endpoint + "rpc/" + function_name
+	current_query["type"] = TYPES.RPC
+	current_query["verb"] = QUERY_TYPES[TYPES.RPC]
+	
+	if config.has("count") and config["count"] in ["exact","planned","estimated"]:
+		current_query["headers"].append_array(PackedStringArray(["Prefer: count=" + config["count"] ]))
+	
+	if config.has("head") and config["head"]:
+		current_query["query"] += "?"
+		current_query["method"] = HTTPClient.METHOD_HEAD
+		for key in arguments.keys():
+			current_query["filters"] += "&{key}={value}".format({"key": key, "value": arguments[key]})
+	else:
+		current_query["method"] = HTTPClient.METHOD_POST
+		current_query["payload"] = arguments
+
+	print(current_query)
+	return self
+
+
 ## https://supabase.com/docs/guides/api/joins-and-nesting
 func select(columns : PackedStringArray = PackedStringArray(["*"])) -> GodotSupabaseDatabase:
 	current_query["query"] += "select=" + ",".join(columns)
@@ -355,18 +396,22 @@ func exec():
 	if current_query["type"] in [TYPES.UPDATE, TYPES.DELETE] and current_query["filters"].is_empty():
 		push_error("GodotSupabaseDatabase: You cannot {action} without applying any filters to the query".format({"action": current_query["verb"]}))
 		return
-		
+	
 	print(current_query["query"] + current_query["filters"])
+	var query: String = _sanitize_query()
 
+	print(query)
 	GodotSupabase.http_request(on_request_completed).request(
-		current_query["query"] + current_query["filters"], 
+		query, 
 		current_query["headers"], 
 		current_query["method"],
 		JSON.stringify(current_query["payload"])
 	)
 
 
-func reset_query() -> void:
+func reset_query(except: Array[String] = []) -> void:
+	var backup = current_query.duplicate()
+	
 	current_query = {
 		"query": "",
 		"type": "",
@@ -376,6 +421,10 @@ func reset_query() -> void:
 		"payload": [],
 		"headers": GodotSupabase.CONFIGURATION["global"]["headers"]
 	}
+	
+	for key in except:
+		if current_query.has(key):
+			current_query[key] = backup[key]
 
 
 func _build_prefer_headers(config: Dictionary) -> PackedStringArray:
@@ -388,7 +437,17 @@ func _build_prefer_headers(config: Dictionary) -> PackedStringArray:
 	
 	return PackedStringArray([prefer_headers])
 	
-
+func _sanitize_query() -> String:
+	var query: String = current_query["query"] + current_query["filters"]
+	
+	if not current_query["filters"].is_empty():
+		if current_query["query"].ends_with("?") and current_query["filters"].begins_with("&"):
+			current_query["filters"] = current_query["filters"].substr(1)
+			query = current_query["query"] + current_query["filters"]
+		
+	return query
+	
+	
 func on_request_completed(result : int, response_code : int, headers : PackedStringArray, body : PackedByteArray, http_handler: HTTPRequest) -> void:
 	var data: String = body.get_string_from_utf8()
 	var content = {} if data.is_empty() else JSON.parse_string(data)
