@@ -58,6 +58,7 @@ var subscribed: bool = false:
 func _init(realtime_client: GodotSupabaseRealtimeClient, channel_name: String):
 	client = realtime_client as GodotSupabaseRealtimeClient
 	internal_name = channel_name
+	
 
 
 func on(
@@ -86,40 +87,50 @@ func on(
 					connect(client.RealtimePostgressChangesListenEvent.signal_name(event), callback)
 				else:
 					events = [client.RealtimePostgressChangesListenEvent.ALL]
+					connect(client.RealtimePostgressChangesListenEvent.signal_name(client.RealtimePostgressChangesListenEvent.INSERT), callback)
+					connect(client.RealtimePostgressChangesListenEvent.signal_name(client.RealtimePostgressChangesListenEvent.UPDATE), callback)
+					connect(client.RealtimePostgressChangesListenEvent.signal_name(client.RealtimePostgressChangesListenEvent.DELETE), callback)
 	else:
 		push_error("GodotSupabaseRealtimeChannel: The topic {listen_type} is not a valid value, allowed values are {values}".format({"listen_type": listen_type, "values": ",".join(ListenTypes.allowed_values())}))
 	
 	return self
 
 
+func send(data: Dictionary) -> void:
+	if subscribed:
+		client.send_message(data)
+	else:
+		push_error("GodotSupabaseRealtimeChannel: you need to subscribe on this channel {name} to be able send data".format({"name": internal_name}))
+
+
 func subscribe() -> GodotSupabaseRealtimeChannel:
 	if subscribed:
 		push_error("GodotSupabaseRealtimeChannel: Already subscribed to the channel {schema}".format({"schema": schema}))
-	
-	client.send_message({
-		"topic": _build_topic(),
-		"event": client.ChannelEvents.JOIN,
-		"payload": {},
-		"ref": null
-	})
-	
-	subscribed = true
+	else:
+		client.send_message({
+			"topic": _build_topic(),
+			"event": client.ChannelEvents.JOIN,
+			"payload": {},
+			"ref": null
+		})
+		
+		subscribed = true
 	
 	
 	return self
 
 func unsubscribe() -> GodotSupabaseRealtimeChannel:
-	if not subscribed:
-		push_error("GodotSupabaseRealtimeChannel: Already unsubscribed from channel {schema}".format({"schema": schema}))
-	
+	if subscribed:
 		client.send_message({
-		"topic": _build_topic(),
-		"event": client.ChannelEvents.LEAVE,
-		"payload": {},
-		"ref": null
-	})
-	
-	subscribed = false
+			"topic": _build_topic(),
+			"event": client.ChannelEvents.LEAVE,
+			"payload": {},
+			"ref": null
+		})
+		
+		subscribed = false
+	else:
+		push_error("GodotSupabaseRealtimeChannel: Already unsubscribed from channel {schema}".format({"schema": schema}))
 	
 	return self
 
