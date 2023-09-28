@@ -3,8 +3,9 @@ class_name GodotSupabaseDatabase extends Node
 signal selected(query: Dictionary)
 signal inserted(query: Dictionary)
 signal updated(query: Dictionary)
+signal upserted(query: Dictionary)
 signal deleted(query: Dictionary)
-signal error
+signal error(error: GodotSupabaseError)
 
 
 ## https://supabase.com/docs/reference/javascript/using-filters
@@ -262,6 +263,21 @@ func query(table: String) -> GodotSupabaseDatabase:
 
 func from(table: String) -> GodotSupabaseDatabase:
 	return query(table)
+	
+## You can order foreign tables, but it doesn't affect the ordering of the current table
+## You can call this method multiple times to order by multiple columns.
+func order(column: String, config: Dictionary = {"ascending": false}) -> GodotSupabaseDatabase:
+	var direction: String = "asc" if config["ascending"] else "desc"
+	var nulls: String = ""
+
+	if config.has("nulls_first"):
+		nulls = ".nullsfirst" if config["nulls_first"] else ".nullslast"
+		
+	var key: String = "{foreign_table}.order".format({"foreign_table": config["foreign_table"]}) if config.has("foreign_table") else "order"
+
+	current_query["filters"] += "&{key}={column}.{direction}{nulls}".format({"key": key, "column": column, "direction": direction, "nulls": nulls})
+	
+	return self
 
 ## https://supabase.com/docs/guides/api/joins-and-nesting
 func select(columns : PackedStringArray = PackedStringArray(["*"])) -> GodotSupabaseDatabase:
@@ -318,10 +334,16 @@ func update(fields: Dictionary, count: String = "") -> GodotSupabaseDatabase:
 
 
 ## delete() should always be combined with filters to target the item(s) you wish to delete
-func delete() -> GodotSupabaseDatabase:
+func delete(count: String = "") -> GodotSupabaseDatabase:
 	current_query["type"] = TYPES.DELETE
 	current_query["verb"] = QUERY_TYPES[TYPES.DELETE]
 	current_query["method"] = HTTPClient.METHOD_DELETE
+	
+	if count in ["exact","planned","estimated"]:
+		current_query["headers"].append_array(PackedStringArray(["Prefer: count=" + count]))
+	else:
+		if not count.is_empty():
+			push_error("GodotSupabaseDatabase: The value count {count} on DELETE is not allowed, allowed values are 'exact','planned', 'estimated'")
 	
 	return self
 
@@ -346,12 +368,14 @@ func exec():
 
 func reset_query() -> void:
 	current_query = {
-	"query": "",
-	"method": "", 
-	"filters": "",
-	"payload": [],
-	"headers": GodotSupabase.CONFIGURATION["global"]["headers"]
-}
+		"query": "",
+		"type": "",
+		"verb": "",
+		"method": "", 
+		"filters": "",
+		"payload": [],
+		"headers": GodotSupabase.CONFIGURATION["global"]["headers"]
+	}
 
 
 func _build_prefer_headers(config: Dictionary) -> PackedStringArray:
@@ -376,14 +400,16 @@ func on_request_completed(result : int, response_code : int, headers : PackedStr
 				selected.emit(current_query)
 			TYPES.INSERT:
 				inserted.emit(current_query)
+			TYPES.UPSERT:
+				upserted.emit(current_query)
 			TYPES.UPDATE:
 				updated.emit(current_query)
 			TYPES.DELETE:
 				deleted.emit(current_query)
 	else:
 		var supabase_error = GodotSupabaseError.new(content, current_query["verb"])
-		error.emit(supabase_error)
 		push_error(supabase_error)
+		error.emit(supabase_error)
 
 	reset_query()
 	http_handler.queue_free()

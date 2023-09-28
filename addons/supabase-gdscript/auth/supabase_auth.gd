@@ -172,8 +172,8 @@ func on_request_completed(result : int, response_code : int, headers : PackedStr
 				signed_out.emit()
 	else:
 		var supabase_error = GodotSupabaseError.new(content, ACTIONS[current_action])
-		error.emit(supabase_error)
 		push_error(supabase_error)
+		error.emit(supabase_error)
 		
 	current_action = ACTION_TYPE.NONE
 	http_handler.queue_free()
