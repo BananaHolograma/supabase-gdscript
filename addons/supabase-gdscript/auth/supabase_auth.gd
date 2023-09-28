@@ -8,44 +8,34 @@ signal signed_out
 signal error(error: GodotSupabaseError)
 
 
-enum ACTION_TYPE {
-	NONE,
-	SIGNUP_EMAIL,
-	SIGNUP_PHONE,
-	SIGNIN_EMAIL,
-	SIGNIN_PHONE,
-	SIGNOUT,
-	USER
-}
+class ActionTypes: 
+	const NONE = "NONE"
+	const SIGNUP_EMAIL = "SIGNUP_EMAIL"
+	const SIGNUP_PHONE = "SIGNUP_PHONE"
+	const SIGNIN_EMAIL = "SIGNIN_EMAIL"
+	const SIGNIN_PHONE = "SIGNIN_PHONE"
+	const SIGNOUT = "SIGNOUT"
+	const USER = "USER"
 
-var ACTIONS = {
-	ACTION_TYPE.NONE: "NONE",
-	ACTION_TYPE.SIGNUP_EMAIL: "SIGNUP_EMAIL",
-	ACTION_TYPE.SIGNUP_PHONE: "SIGNUP_PHONE",
-	ACTION_TYPE.SIGNIN_EMAIL: "SIGNIN_EMAIL",
-	ACTION_TYPE.SIGNIN_PHONE: "SIGNIN_PHONE",
-	ACTION_TYPE.SIGNOUT: "SIGNOUT",
-	ACTION_TYPE.USER: "USER"
-}
 
 var auth_endpoint: String = "{url}/auth/{version}".format({"url":GodotSupabase.CONFIGURATION["url"] , "version": GodotSupabase.current_api_version})
 
 var ENDPOINTS: Dictionary = {
-	ACTION_TYPE.SIGNUP_EMAIL: auth_endpoint + "/signup",
-	ACTION_TYPE.SIGNUP_PHONE: auth_endpoint + "/signup",
-	ACTION_TYPE.SIGNIN_EMAIL: auth_endpoint + "/token?grant_type=password",
-	ACTION_TYPE.SIGNIN_PHONE: auth_endpoint + "/token?grant_type=password",
-	ACTION_TYPE.SIGNOUT: auth_endpoint + "/logout",
-	ACTION_TYPE.USER: auth_endpoint + "/user"
+	ActionTypes.SIGNUP_EMAIL: auth_endpoint + "/signup",
+	ActionTypes.SIGNUP_PHONE: auth_endpoint + "/signup",
+	ActionTypes.SIGNIN_EMAIL: auth_endpoint + "/token?grant_type=password",
+	ActionTypes.SIGNIN_PHONE: auth_endpoint + "/token?grant_type=password",
+	ActionTypes.SIGNOUT: auth_endpoint + "/logout",
+	ActionTypes.USER: auth_endpoint + "/user"
 }
 
-var current_action: ACTION_TYPE = ACTION_TYPE.NONE
+var current_action = ActionTypes.NONE
 var user: GodotSupabaseUser
 
 
 func sign_up_with_email(email: String, password: String, metadata: Dictionary = {}) -> GodotSupabaseAuth:
 	if not _user_is_authenticated():
-		current_action = ACTION_TYPE.SIGNUP_EMAIL
+		current_action = ActionTypes.SIGNUP_EMAIL
 		
 		GodotSupabase.http_request(on_request_completed).request(
 			ENDPOINTS[current_action], 
@@ -58,7 +48,7 @@ func sign_up_with_email(email: String, password: String, metadata: Dictionary = 
 
 func sign_up_with_phone(phone: String, password: String, metadata: Dictionary = {}) -> void:
 	if not _user_is_authenticated():
-		current_action = ACTION_TYPE.SIGNUP_PHONE
+		current_action = ActionTypes.SIGNUP_PHONE
 		
 		GodotSupabase.http_request(on_request_completed).request(
 			ENDPOINTS[current_action], 
@@ -70,7 +60,7 @@ func sign_up_with_phone(phone: String, password: String, metadata: Dictionary = 
 		
 func sign_in_with_email(email: String, password: String) -> GodotSupabaseAuth:
 	if not _user_is_authenticated():
-		current_action = ACTION_TYPE.SIGNIN_EMAIL
+		current_action = ActionTypes.SIGNIN_EMAIL
 		
 		GodotSupabase.http_request(on_request_completed).request(
 			ENDPOINTS[current_action], 
@@ -83,7 +73,7 @@ func sign_in_with_email(email: String, password: String) -> GodotSupabaseAuth:
 
 func sign_in_with_phone(phone: String, password: String) -> void:
 	if not _user_is_authenticated():
-		current_action = ACTION_TYPE.SIGNIN_PHONE
+		current_action = ActionTypes.SIGNIN_PHONE
 		
 		GodotSupabase.http_request(on_request_completed).request(
 			ENDPOINTS[current_action], 
@@ -95,7 +85,7 @@ func sign_in_with_phone(phone: String, password: String) -> void:
 
 func sign_out() -> void:
 	if _user_is_authenticated():
-		current_action = ACTION_TYPE.SIGNOUT
+		current_action = ActionTypes.SIGNOUT
 		GodotSupabase.http_request(on_request_completed).request(
 			ENDPOINTS[current_action], 
 			GodotSupabase.CONFIGURATION["global"]["headers"],
@@ -105,7 +95,7 @@ func sign_out() -> void:
 
 func fetch_user() -> void:
 	if _user_is_authenticated():
-		current_action = ACTION_TYPE.USER
+		current_action = ActionTypes.USER
 		GodotSupabase.http_request(on_request_completed).request(
 			ENDPOINTS[current_action], 
 			GodotSupabase.CONFIGURATION["global"]["headers"],
@@ -152,28 +142,28 @@ func on_request_completed(result : int, response_code : int, headers : PackedStr
 
 	if result == HTTPRequest.RESULT_SUCCESS and response_code in [200, 201, 204]:
 		match(current_action):
-			ACTION_TYPE.USER:
+			ActionTypes.USER:
 				_set_auth_user(content)
-			ACTION_TYPE.SIGNUP_EMAIL:
+			ActionTypes.SIGNUP_EMAIL:
 				_set_auth_user(content)
 				signed_up_with_email.emit(user)
-			ACTION_TYPE.SIGNUP_PHONE:
+			ActionTypes.SIGNUP_PHONE:
 				_set_auth_user(content)
 				signed_up_with_phone.emit(user)
-			ACTION_TYPE.SIGNIN_EMAIL:
+			ActionTypes.SIGNIN_EMAIL:
 				_set_auth_user(content)
 				signed_in_with_email.emit(user)
-			ACTION_TYPE.SIGNIN_PHONE:
+			ActionTypes.SIGNIN_PHONE:
 				_set_auth_user(content)
 				signed_in_with_phone.emit(user)
-			ACTION_TYPE.SIGNOUT:
+			ActionTypes.SIGNOUT:
 				user = null
 				remove_jwt_token()
 				signed_out.emit()
 	else:
-		var supabase_error = GodotSupabaseError.new(content, ACTIONS[current_action])
+		var supabase_error = GodotSupabaseError.new(content, current_action)
 		push_error(supabase_error)
 		error.emit(supabase_error)
 		
-	current_action = ACTION_TYPE.NONE
+	current_action = ActionTypes.NONE
 	http_handler.queue_free()

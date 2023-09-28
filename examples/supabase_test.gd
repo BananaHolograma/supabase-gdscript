@@ -3,7 +3,7 @@ extends Node2D
 
 # Called when the node enters the scene tree for the first time.
 func _ready():
-#	await GodotSupabase.auth.sign_in_with_email("hola4@amigos.com", "password").signed_in_with_email
+	await GodotSupabase.auth.sign_in_with_email("hola4@amigos.com", "password").signed_in_with_email
 #	GodotSupabase.database.from("countries").select(["id"]).Not("name", "is", null).exec()
 #	GodotSupabase.database.from("countries").select(["id"]).Or('id.eq.3,name.eq.Algeria').exec()
 #	GodotSupabase.database.query("countries").select(["name", "cities!inner(name)"]).Or('country_id.eq.1,name.eq.Beijing', 'cities').exec()
@@ -17,7 +17,7 @@ func _ready():
 #	GodotSupabase.database.query("clowns").select(["name"]).contains("address", {"postcode": 90210}).exec()
 #	GodotSupabase.database.query("issues").select(["title"]).overlaps("tags", ['is:closed', 'severity:high']).exec()
 #	GodotSupabase.database.query("issues").select(["title"]).text_search("title", "'Cache' & 'cat'", {"type": "plain", "config": "english"}).exec()
-#	GodotSupabase.database.query("rooms").select(["code", "host"]).Match({"host": "godgamedev", "scenario": "Dungeon", "server_name": "POLITOXICOMANO"}).exec()
+	GodotSupabase.database.query("rooms").select(["code", "host"]).Match({"host": "godgamedev", "scenario": "Dungeon", "server_name": "POLITOXICOMANO"}).exec()
 #	GodotSupabase.database.query("reservations").select(["room_name"]).range_gt("during", "[2000-01-01 13:00, 2000-01-01 13:30)").exec()
 #	GodotSupabase.database.query("rooms").select(["code"]).In("host", ["AMIYO"]).exec()
 #	GodotSupabase.database.query("classes").select(["name"]).contained_by("days", ['monday', 'tuesday', 'wednesday', 'friday']).exec()

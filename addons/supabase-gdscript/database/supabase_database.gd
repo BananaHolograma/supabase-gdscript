@@ -1,32 +1,24 @@
 class_name GodotSupabaseDatabase extends Node
 
-signal selected(query: Dictionary)
-signal inserted(query: Dictionary)
-signal updated(query: Dictionary)
-signal upserted(query: Dictionary)
-signal deleted(query: Dictionary)
-signal rpc_called(query: Dictionary)
+signal selected(query: Dictionary, result)
+signal inserted(query: Dictionary, result)
+signal updated(query: Dictionary, result)
+signal upserted(query: Dictionary, result)
+signal deleted(query: Dictionary, result)
+signal rpc_called(query: Dictionary, result)
 signal error(error: GodotSupabaseError)
 
 
 ## https://supabase.com/docs/reference/javascript/using-filters
-enum TYPES {
-	SELECT,
-	INSERT,
-	UPDATE,
-	UPSERT,
-	DELETE,
-	RPC
-}
 
-var QUERY_TYPES = {
-	TYPES.SELECT: "SELECT",
-	TYPES.INSERT: "INSERT",
-	TYPES.UPDATE: "UPDATE",
-	TYPES.UPSERT: "UPSERT",
-	TYPES.DELETE: "DELETE",
-	TYPES.RPC: "RPC"
-}
+class QueryTypes:
+	const SELECT = "SELECT"
+	const INSERT = "INSERT"
+	const UPDATE = "UPDATE"
+	const UPSERT = "UPSERT"
+	const DELETE = "DELETE"
+	const RPC = "RPC"
+
 
 var endpoint: String = "{base}/rest/{version}/".format({
 	"base": GodotSupabase.CONFIGURATION["url"],
@@ -36,7 +28,6 @@ var endpoint: String = "{base}/rest/{version}/".format({
 var current_query: Dictionary = {
 	"query": "",
 	"type": "",
-	"verb": "",
 	"method": "", 
 	"filters": "",
 	"payload": [],
@@ -302,8 +293,7 @@ func Rpc(function_name: String, arguments: Dictionary = {}, config: Dictionary =
 	reset_query(["filters"])
 
 	current_query["query"] = endpoint + "rpc/" + function_name
-	current_query["type"] = TYPES.RPC
-	current_query["verb"] = QUERY_TYPES[TYPES.RPC]
+	current_query["type"] = QueryTypes.RPC
 	
 	if config.has("count") and config["count"] in ["exact","planned","estimated"]:
 		current_query["headers"].append_array(PackedStringArray(["Prefer: count=" + config["count"] ]))
@@ -324,8 +314,7 @@ func Rpc(function_name: String, arguments: Dictionary = {}, config: Dictionary =
 ## https://supabase.com/docs/guides/api/joins-and-nesting
 func select(columns : PackedStringArray = PackedStringArray(["*"])) -> GodotSupabaseDatabase:
 	current_query["query"] += "select=" + ",".join(columns)
-	current_query["type"] = TYPES.SELECT
-	current_query["verb"] = QUERY_TYPES[TYPES.SELECT]
+	current_query["type"] = QueryTypes.SELECT
 	current_query["method"] = HTTPClient.METHOD_GET
 	current_query["headers"].append_array(read_headers)
 	
@@ -333,8 +322,7 @@ func select(columns : PackedStringArray = PackedStringArray(["*"])) -> GodotSupa
 	
 	
 func insert(fields: Array, config: Dictionary = {}) -> GodotSupabaseDatabase:
-	current_query["type"] = TYPES.INSERT
-	current_query["verb"] = QUERY_TYPES[TYPES.INSERT]
+	current_query["type"] = QueryTypes.INSERT
 	current_query["method"] = HTTPClient.METHOD_POST
 	current_query["payload"] = fields
 	current_query["headers"].append_array( _build_prefer_headers(config))
@@ -346,8 +334,7 @@ func insert(fields: Array, config: Dictionary = {}) -> GodotSupabaseDatabase:
 ## fields can be both,array for bulk and dictionary for individual
 ## https://www.cockroachlabs.com/blog/sql-upsert/
 func upsert(fields: Array, config: Dictionary = {}) -> GodotSupabaseDatabase:
-	current_query["type"] = TYPES.UPSERT
-	current_query["verb"] = QUERY_TYPES[TYPES.UPSERT]
+	current_query["type"] = QueryTypes.UPSERT
 	current_query["method"] = HTTPClient.METHOD_POST
 	current_query["payload"] = fields
 	current_query["headers"].append_array( _build_prefer_headers(config))
@@ -361,8 +348,7 @@ func upsert(fields: Array, config: Dictionary = {}) -> GodotSupabaseDatabase:
 ## fields can be both, array for bulk and dictionary for individual
 ## count value can be "exact","planned","estimated"
 func update(fields: Dictionary, count: String = "") -> GodotSupabaseDatabase:
-	current_query["type"] = TYPES.UPDATE
-	current_query["verb"] = QUERY_TYPES[TYPES.UPDATE]
+	current_query["type"] = QueryTypes.UPDATE
 	current_query["method"] = HTTPClient.METHOD_PATCH
 	current_query["payload"] = fields
 	
@@ -377,8 +363,7 @@ func update(fields: Dictionary, count: String = "") -> GodotSupabaseDatabase:
 
 ## delete() should always be combined with filters to target the item(s) you wish to delete
 func delete(count: String = "") -> GodotSupabaseDatabase:
-	current_query["type"] = TYPES.DELETE
-	current_query["verb"] = QUERY_TYPES[TYPES.DELETE]
+	current_query["type"] = QueryTypes.DELETE
 	current_query["method"] = HTTPClient.METHOD_DELETE
 	
 	if count in ["exact","planned","estimated"]:
@@ -394,8 +379,8 @@ func exec():
 	if current_query["query"].is_empty():
 		return
 	
-	if current_query["type"] in [TYPES.UPDATE, TYPES.DELETE] and current_query["filters"].is_empty():
-		push_error("GodotSupabaseDatabase: You cannot {action} without applying any filters to the query".format({"action": current_query["verb"]}))
+	if current_query["type"] in [QueryTypes.UPDATE, QueryTypes.DELETE] and current_query["filters"].is_empty():
+		push_error("GodotSupabaseDatabase: You cannot {action} without applying any filters to the query".format({"action": current_query["type"]}))
 		return
 	
 	print(current_query["query"] + current_query["filters"])
@@ -416,7 +401,6 @@ func reset_query(except: Array[String] = []) -> void:
 	current_query = {
 		"query": "",
 		"type": "",
-		"verb": "",
 		"method": "", 
 		"filters": "",
 		"payload": [],
@@ -438,6 +422,7 @@ func _build_prefer_headers(config: Dictionary) -> PackedStringArray:
 	
 	return PackedStringArray([prefer_headers])
 	
+
 func _sanitize_query() -> String:
 	var query: String = current_query["query"] + current_query["filters"]
 	
@@ -456,20 +441,20 @@ func on_request_completed(result : int, response_code : int, headers : PackedStr
 	print(content)
 	if result == HTTPRequest.RESULT_SUCCESS and response_code in [200, 201, 204]:
 		match(current_query["type"]):
-			TYPES.SELECT:
-				selected.emit(current_query)
-			TYPES.INSERT:
-				inserted.emit(current_query)
-			TYPES.UPSERT:
-				upserted.emit(current_query)
-			TYPES.UPDATE:
-				updated.emit(current_query)
-			TYPES.DELETE:
-				deleted.emit(current_query)
-			TYPES.RPC:
-				rpc_called.emit(current_query)
+			QueryTypes.SELECT:
+				selected.emit(current_query, result)
+			QueryTypes.INSERT:
+				inserted.emit(current_query, result)
+			QueryTypes.UPSERT:
+				upserted.emit(current_query, result)
+			QueryTypes.UPDATE:
+				updated.emit(current_query, result)
+			QueryTypes.DELETE:
+				deleted.emit(current_query, result)
+			QueryTypes.RPC:
+				rpc_called.emit(current_query, result)
 	else:
-		var supabase_error = GodotSupabaseError.new(content, current_query["verb"])
+		var supabase_error = GodotSupabaseError.new(content, current_query["type"])
 		push_error(supabase_error)
 		error.emit(supabase_error)
 

@@ -57,6 +57,7 @@ func _ready():
 
 	add_child(realtime)
 	
+
 func create_client(url, anon_key, config: Dictionary = {}):
 	if url == null:
 		push_error("GodotSupabase: The supabase project url is not defined, make sure you have the .env file with the correct values")
