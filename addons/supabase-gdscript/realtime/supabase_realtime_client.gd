@@ -115,7 +115,7 @@ func channel(name: String = "any", params: Dictionary = {"broadcast": { "ack": f
 	if channel:
 		return channel
 	
-	return GodotSupabaseRealtimeChannel.new(self, name)
+	return GodotSupabaseRealtimeChannel.new(self, name, params)
 
 
 func add_channel(channel: GodotSupabaseRealtimeChannel) -> void:

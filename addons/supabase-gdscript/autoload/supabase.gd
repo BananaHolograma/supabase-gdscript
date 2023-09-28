@@ -10,6 +10,7 @@ var current_api_version = API_VERSIONS["V1"]
 var auth: GodotSupabaseAuth
 var database: GodotSupabaseDatabase
 var realtime: GodotSupabaseRealtime
+var storage: GodotSupabaseStorage
 
 var CONFIGURATION: Dictionary = {
 	"url": "",
@@ -17,6 +18,9 @@ var CONFIGURATION: Dictionary = {
 	"db": {
 		"url": "",
 		"schema": "public"
+	},
+	"storage": {
+		"url": ""
 	},
 	"auth": {
 		"refresh_token": true,
@@ -54,6 +58,8 @@ func _ready():
 	auth = GodotSupabaseAuth.new()
 	database = GodotSupabaseDatabase.new()
 	realtime = GodotSupabaseRealtime.new(CONFIGURATION["db"]["url"] + "?apikey=" + CONFIGURATION["anon_key"])
+	storage = GodotSupabaseStorage.new(CONFIGURATION["storage"]["url"] + "?apikey=" + CONFIGURATION["anon_key"])
+	
 	add_child(realtime)
 	
 
@@ -72,6 +78,7 @@ func create_client(url, anon_key, config: Dictionary = {}):
 	CONFIGURATION["global"]["headers"].append("apikey: {key}".format({"key": anon_key}))
 	CONFIGURATION["global"]["headers"].append("Authorization: Bearer ")
 	CONFIGURATION["db"]["url"] = url.replace("http","ws")+ "/realtime/{version}/websocket".format({"version": current_api_version})
+	CONFIGURATION["storage"]["url"] = url + "/storage/{version}".format({"version": current_api_version})
 	
 	CONFIGURATION.merge(config, true)
 

@@ -35,6 +35,7 @@ class RealtimeChannelSendResponse:
 	
 
 var client: GodotSupabaseRealtimeClient
+var config: Dictionary
 
 var topic: String
 var internal_name: String
@@ -44,6 +45,7 @@ var table: String = ""
 var events: Array[String] = ["*"]
 var payload_callback: Callable = _default_callback
 var filter: String = ""
+
 
 var subscribed: bool = false:
 	set(value):
@@ -55,10 +57,14 @@ var subscribed: bool = false:
 		subscribed = value
 
 
-func _init(realtime_client: GodotSupabaseRealtimeClient, channel_name: String):
+func _init(
+	realtime_client: GodotSupabaseRealtimeClient, 
+	channel_name: String, 
+	params: Dictionary = {"broadcast": { "ack": false, "self": false }}
+):
 	client = realtime_client as GodotSupabaseRealtimeClient
 	internal_name = channel_name
-	
+	config = params
 
 
 func on(
@@ -95,7 +101,14 @@ func on(
 	
 	return self
 
-
+## You can use this function to send data
+## For example on broadcast
+#  channel.send({
+#    type: 'broadcast',
+#    event: 'test-my-messages',
+#    payload: { message: 'talking to myself' },
+#  })
+##
 func send(data: Dictionary) -> void:
 	if subscribed:
 		client.send_message(data)
