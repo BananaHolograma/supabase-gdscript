@@ -53,8 +53,7 @@ func _ready():
 	
 	auth = GodotSupabaseAuth.new()
 	database = GodotSupabaseDatabase.new()
-	realtime = GodotSupabaseRealtime.new()
-
+	realtime = GodotSupabaseRealtime.new(CONFIGURATION["db"]["url"] + "?apikey=" + CONFIGURATION["anon_key"])
 	add_child(realtime)
 	
 

@@ -3,7 +3,9 @@ extends Node2D
 
 # Called when the node enters the scene tree for the first time.
 func _ready():
-	await GodotSupabase.auth.sign_in_with_email("hola4@amigos.com", "password").signed_in_with_email
+#	await GodotSupabase.auth.sign_in_with_email("hola4@amigos.com", "password").signed_in_with_email
+	GodotSupabase.realtime.client.connected.connect(on_connected)
+	GodotSupabase.realtime.client.connect_client()
 #	GodotSupabase.database.from("countries").select(["id"]).Not("name", "is", null).exec()
 #	GodotSupabase.database.from("countries").select(["id"]).Or('id.eq.3,name.eq.Algeria').exec()
 #	GodotSupabase.database.query("countries").select(["name", "cities!inner(name)"]).Or('country_id.eq.1,name.eq.Beijing', 'cities').exec()
@@ -45,4 +47,17 @@ func _ready():
 #
 #	GodotSupabase.auth.sign_out()
 
+func on_connected(client: GodotSupabaseRealtimeClient):
+	client.channel("schema-db-changes")\
+	.on(GodotSupabaseRealtimeChannel.ListenTypes.POSTGRES_CHANGES, 
+		{
+			"event": GodotSupabaseRealtimeClient.RealtimePostgressChangesListenEvent.INSERT, 
+			"schema": "public", 
+			"table": "countries"
+		},
+		 on_payload)\
+	.subscribe()
+
+func on_payload(new, channel):
+	print("payload received: ", new, channel)
 

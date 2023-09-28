@@ -2,10 +2,10 @@ class_name GodotSupabaseRealtime extends Node
 
 var client: GodotSupabaseRealtimeClient
 
-func _init(timeout: float = 30.0):
+func _init(url: String):
 	self.name = "GodotSupabaseRealtime"
 	
-	client = GodotSupabaseRealtimeClient.new(timeout)
+	client = GodotSupabaseRealtimeClient.new(url)
 	client.name = "GodotSupabaseRealtimeClient"
 	add_child(client)	
 
