@@ -55,10 +55,10 @@ func _ready():
 	GodotEnvironment.remove_var("supabaseUrl")
 	GodotEnvironment.remove_var("supabaseKey")
 	
-	auth = GodotSupabaseAuth.new()
-	database = GodotSupabaseDatabase.new()
-	realtime = GodotSupabaseRealtime.new(CONFIGURATION["db"]["url"] + "?apikey=" + CONFIGURATION["anon_key"])
-	storage = GodotSupabaseStorage.new(CONFIGURATION["storage"]["url"] + "?apikey=" + CONFIGURATION["anon_key"])
+	auth = GodotSupabaseAuth.new() as GodotSupabaseAuth
+	database = GodotSupabaseDatabase.new() as GodotSupabaseDatabase
+	realtime = GodotSupabaseRealtime.new(CONFIGURATION["db"]["url"] + "?apikey=" + CONFIGURATION["anon_key"]) as GodotSupabaseRealtime
+	storage = GodotSupabaseStorage.new(CONFIGURATION["storage"]["url"] + "?apikey=" + CONFIGURATION["anon_key"]) as GodotSupabaseStorage
 	
 	add_child(realtime)
 	
@@ -78,7 +78,7 @@ func create_client(url, anon_key, config: Dictionary = {}):
 	CONFIGURATION["global"]["headers"].append("apikey: {key}".format({"key": anon_key}))
 	CONFIGURATION["global"]["headers"].append("Authorization: Bearer ")
 	CONFIGURATION["db"]["url"] = url.replace("http","ws")+ "/realtime/{version}/websocket".format({"version": current_api_version})
-	CONFIGURATION["storage"]["url"] = url + "/storage/{version}".format({"version": current_api_version})
+	CONFIGURATION["storage"]["url"] = url + "/storage/{version}/bucket".format({"version": current_api_version})
 	
 	CONFIGURATION.merge(config, true)
 
