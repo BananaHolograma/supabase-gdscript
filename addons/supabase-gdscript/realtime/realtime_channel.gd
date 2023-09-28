@@ -5,6 +5,12 @@ class_name GodotSupabaseRealtimeChannel extends Node
 # You can think of a channel as a chatroom where participants are able to see who's online
 ## and send and receive messages
 
+signal all(old_record, new_record, channel: GodotSupabaseRealtimeChannel)
+signal insert(new_record, channel: GodotSupabaseRealtimeChannel)
+signal update(old_record, new_record, channel: GodotSupabaseRealtimeChannel)
+signal delete(old_record, channel: GodotSupabaseRealtimeChannel)
+
+
 class ListenTypes:
 	const BROADCAST = "broadcast"
 	const PRESENCE = "presence"
@@ -12,17 +18,6 @@ class ListenTypes:
 	
 	static func allowed_values() -> Array[String]:
 		return [BROADCAST, PRESENCE, POSTGRES_CHANGES]
-
-
-class RealtimePostgressChangesListenEvent:
-	const ALL = "*"
-	const INSERT = "INSERT"
-	const UPDATE = "UPDATE"
-	const DELETE = "DELETE"
-	
-	static func allowed_values() -> Array[String]:
-		return [ALL, INSERT, UPDATE, DELETE]
-		
 		
 class SubscribeStates:
 	const SUBSCRIBED = "SUBSCRIBED"
@@ -42,7 +37,7 @@ var client: GodotSupabaseRealtimeClient
 var listen_type: String = ListenTypes.BROADCAST
 var schema: String = "any"
 var table: String = ""
-var event: String = RealtimePostgressChangesListenEvent.ALL
+var event: String = "*"
 var payload_callback: Callable = _default_callback
 
 
@@ -73,8 +68,8 @@ func on(
 		listen_type = selected_listen_type
 			
 		for filter in filters.keys():
-			if filter == "event" and not filter in RealtimePostgressChangesListenEvent.allowed_values():
-				push_error("GodotSupabaseRealtimeChannel: The event {value} is not a valid value, allowed values are ".format({"value": filters[filter], "allowed_values":  RealtimePostgressChangesListenEvent.allowed_values()}))
+			if filter == "event" and not filter in client.RealtimePostgressChangesListenEvent.allowed_values():
+				push_error("GodotSupabaseRealtimeChannel: The event {value} is not a valid value, allowed values are ".format({"value": filters[filter], "allowed_values":  client.RealtimePostgressChangesListenEvent.allowed_values()}))
 				continue
 				
 			self[filter] = filters[filter]

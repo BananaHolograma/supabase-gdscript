@@ -17,7 +17,7 @@ func _ready():
 #	GodotSupabase.database.query("clowns").select(["name"]).contains("address", {"postcode": 90210}).exec()
 #	GodotSupabase.database.query("issues").select(["title"]).overlaps("tags", ['is:closed', 'severity:high']).exec()
 #	GodotSupabase.database.query("issues").select(["title"]).text_search("title", "'Cache' & 'cat'", {"type": "plain", "config": "english"}).exec()
-	GodotSupabase.database.query("rooms").select(["code", "host"]).Match({"host": "godgamedev", "scenario": "Dungeon", "server_name": "POLITOXICOMANO"}).exec()
+#	GodotSupabase.database.query("rooms").select(["code", "host"]).Match({"host": "godgamedev", "scenario": "Dungeon", "server_name": "POLITOXICOMANO"}).exec()
 #	GodotSupabase.database.query("reservations").select(["room_name"]).range_gt("during", "[2000-01-01 13:00, 2000-01-01 13:30)").exec()
 #	GodotSupabase.database.query("rooms").select(["code"]).In("host", ["AMIYO"]).exec()
 #	GodotSupabase.database.query("classes").select(["name"]).contained_by("days", ['monday', 'tuesday', 'wednesday', 'friday']).exec()
