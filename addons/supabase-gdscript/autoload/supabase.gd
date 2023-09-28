@@ -9,26 +9,33 @@ var current_api_version = API_VERSIONS["V1"]
 ## MODULES ##
 var auth: GodotSupabaseAuth
 var database: GodotSupabaseDatabase
+var realtime: GodotSupabaseRealtime
 
 var CONFIGURATION: Dictionary = {
 	"url": "",
 	"anon_key": "",
 	"db": {
+		"url": "",
 		"schema": "public"
 	},
 	"auth": {
-	"refresh_token": true,
-	"persist_session": true,
-	"detect_session_in_url": true,
-	"flow_type": "implicit"
+		"refresh_token": true,
+		"persist_session": true,
+		"detect_session_in_url": true,
+		"flow_type": "implicit"
 	},
 	"global": {
 		"headers": PackedStringArray([
 			"X-Client-Info: supabase-gdscript/{version}".format({"version": Helpers.get_plugin_version()}),
 			"Content-Type: application/json",
 			"Accept: application/json",
-			])
-		}
+		])
+	},
+	"realtime": {
+		"transport": "websocket",
+		"timeout": 10000,
+		"ws_close_normal": 1000
+	}
 }
 
 
@@ -46,8 +53,10 @@ func _ready():
 	
 	auth = GodotSupabaseAuth.new()
 	database = GodotSupabaseDatabase.new()
+	realtime = GodotSupabaseRealtime.new()
 
-
+	add_child(realtime)
+	
 func create_client(url, anon_key, config: Dictionary = {}):
 	if url == null:
 		push_error("GodotSupabase: The supabase project url is not defined, make sure you have the .env file with the correct values")
@@ -62,6 +71,7 @@ func create_client(url, anon_key, config: Dictionary = {}):
 	CONFIGURATION["anon_key"] = anon_key
 	CONFIGURATION["global"]["headers"].append("apikey: {key}".format({"key": anon_key}))
 	CONFIGURATION["global"]["headers"].append("Authorization: Bearer ")
+	CONFIGURATION["db"]["url"] = url.replace("http","ws")+ "/realtime/{version}/websocket".format({"version": current_api_version})
 	
 	CONFIGURATION.merge(config, true)
 

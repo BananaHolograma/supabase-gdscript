@@ -5,6 +5,7 @@ signal inserted(query: Dictionary)
 signal updated(query: Dictionary)
 signal upserted(query: Dictionary)
 signal deleted(query: Dictionary)
+signal rpc_called(query: Dictionary)
 signal error(error: GodotSupabaseError)
 
 
@@ -465,6 +466,8 @@ func on_request_completed(result : int, response_code : int, headers : PackedStr
 				updated.emit(current_query)
 			TYPES.DELETE:
 				deleted.emit(current_query)
+			TYPES.RPC:
+				rpc_called.emit(current_query)
 	else:
 		var supabase_error = GodotSupabaseError.new(content, current_query["verb"])
 		push_error(supabase_error)
