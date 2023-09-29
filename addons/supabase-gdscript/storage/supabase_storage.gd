@@ -7,6 +7,7 @@ signal updated_bucket(result)
 signal deleted_bucket(result)
 signal emptied_bucket(result)
 signal uploaded_file(result)
+signal downloaded_file(result)
 signal error(error: GodotSupabaseError)
 
 class BucketActions:
@@ -16,7 +17,8 @@ class BucketActions:
 	const UPDATE_BUCKET = "UPDATE_BUCKET"
 	const DELETE_BUCKET = "DELETE_BUCKET"
 	const EMPTY_BUCKET = "EMPTY_BUCKET"
-	const UPLOADED_FILE = "UPLOADED_FILE"
+	const UPLOAD_FILE = "UPLOAD_FILE"
+	const DOWNLOAD_FILE = "DOWNLOAD_FILE"
 
 
 const DEFAULT_FILE_OPTIONS: Dictionary = {
@@ -26,11 +28,20 @@ const DEFAULT_FILE_OPTIONS: Dictionary = {
   "upsert": false,
 }
 
+const DEFAULT_DOWNLOAD_OPTIONS: Dictionary = {
+	"wants_transformation": false, 
+	"public": false
+}
+
 var storage_url: String
+var bucket_url: String
+var object_url: String
 var current_action: String
 
 func _init(url: String):
 	storage_url = url
+	bucket_url =  url + "/bucket"
+	object_url = url + "/object"
 	
 
 # RLS policy permissions required:
@@ -40,7 +51,7 @@ func list_buckets() -> GodotSupabaseStorage:
 	current_action = BucketActions.LIST_BUCKETS
 	
 	GodotSupabase.http_request(on_request_completed).request(
-		storage_url,
+		bucket_url,
 		GodotSupabase["CONFIGURATION"]["global"]["headers"],
 		HTTPClient.METHOD_GET
 	)
@@ -54,7 +65,7 @@ func get_bucket(id: String) -> GodotSupabaseStorage:
 	current_action = BucketActions.GET_BUCKET
 	
 	GodotSupabase.http_request(on_request_completed).request(
-		storage_url + "/" + id,
+		bucket_url + "/" + id,
 		GodotSupabase["CONFIGURATION"]["global"]["headers"],
 		HTTPClient.METHOD_GET
 	)
@@ -63,13 +74,14 @@ func get_bucket(id: String) -> GodotSupabaseStorage:
 ## RLS policy permissions required:
 # buckets table permissions: insert
 # objects table permissions: none
-func create_bucket(_name: String, options: Dictionary = { public = false, file_size_limit = "1024", allowed_mime_types = ["*/*"] }) -> GodotSupabaseStorage:
+## File size formats  20GB / 20MB / 30KB / 3B
+func create_bucket(_name: String, options: Dictionary = { public = false, file_size_limit = "50MB", allowed_mime_types = [""] }) -> GodotSupabaseStorage:
 	current_action = BucketActions.CREATE_BUCKET
 	
 	options.merge({"name": _name, "id": _name})
 	
 	GodotSupabase.http_request(on_request_completed).request(
-		storage_url,
+		bucket_url,
 		GodotSupabase["CONFIGURATION"]["global"]["headers"],
 		HTTPClient.METHOD_POST,
 		JSON.stringify(options)
@@ -85,7 +97,7 @@ func update_bucket(id: String, options: Dictionary) -> GodotSupabaseStorage:
 	current_action = BucketActions.UPDATE_BUCKET
 
 	GodotSupabase.http_request(on_request_completed).request(
-		storage_url + "/" + id,
+		bucket_url + "/" + id,
 		GodotSupabase["CONFIGURATION"]["global"]["headers"],
 		HTTPClient.METHOD_PUT,
 		JSON.stringify(options)
@@ -105,7 +117,7 @@ func delete_bucket(id: String) -> GodotSupabaseStorage:
 	current_action = BucketActions.DELETE_BUCKET
 	
 	GodotSupabase.http_request(on_request_completed).request(
-		storage_url + "/" + id,
+		bucket_url + "/" + id,
 		GodotSupabase["CONFIGURATION"]["global"]["headers"],
 		HTTPClient.METHOD_DELETE,
 		JSON.stringify({})
@@ -120,7 +132,7 @@ func empty_bucket(id: String) -> GodotSupabaseStorage:
 	current_action = BucketActions.EMPTY_BUCKET
 	
 	GodotSupabase.http_request(on_request_completed).request(
-		storage_url + "/" + id + "/empty",
+		bucket_url + "/" + id + "/empty",
 		GodotSupabase["CONFIGURATION"]["global"]["headers"],
 		HTTPClient.METHOD_POST,
 		JSON.stringify({})
@@ -132,12 +144,12 @@ func empty_bucket(id: String) -> GodotSupabaseStorage:
 #buckets table permissions: none
 #objects table permissions: only insert when you are uploading new files and select, insert and update when you are upserting files
 func upload_file(bucket_id: String, object: String, filepath: String, options: Dictionary = DEFAULT_FILE_OPTIONS.duplicate()) -> GodotSupabaseStorage:
-	current_action = BucketActions.UPLOADED_FILE
+	current_action = BucketActions.UPLOAD_FILE
 	
 	var file := FileAccess.open(filepath, FileAccess.READ)
 	if not file:
 		var supabase_error = GodotSupabaseError.new(
-			{"message": "GodotSupabaseError: The file on path {path} cannot be accessed, an error happened {error}".format({"path": filepath, "error": file.get_open_error()})}, 
+			{"message": "GodotSupabaseError: The file on path {path} cannot be accessed, an error happened -> {error}".format({"path": filepath, "error": file.get_open_error()})}, 
 			current_action
 		)
 		push_error(supabase_error)
@@ -153,9 +165,9 @@ func upload_file(bucket_id: String, object: String, filepath: String, options: D
 	
 	var file_content := file.get_buffer(options["content_length"])
 	file.close()
-	
+
 	GodotSupabase.http_request(on_request_completed).request_raw(
-		storage_url + "/" + bucket_id + "/" + object,
+		object_url + "/" + bucket_id + "/" + object,
 		_file_headers(options),
 		HTTPClient.METHOD_POST,
 		file_content
@@ -163,9 +175,33 @@ func upload_file(bucket_id: String, object: String, filepath: String, options: D
 	
 	return self
 	
+# Downloads a file from a private bucket
+func download_file(bucket_id: String, filepath: String, options: Dictionary = DEFAULT_DOWNLOAD_OPTIONS.duplicate()) -> GodotSupabaseStorage:
+	var wants_tranformation = options["wants_transformation"] if options.has("wants_transformation") else false
+	var render_path: String =  "render/image/authenticated" if wants_tranformation else "object"
+	var transform_options = _transform_options_to_query_string(options)
+	
+
+	var endpoint = "{url}/{render_path}/{id}/{path}{transform_query}".format({
+		"url": storage_url,
+		"render_path": render_path, 
+		"id": bucket_id, 
+		"path": filepath,
+		"transform_query": "" if transform_options.is_empty() else "?" + transform_options
+	})
+	print("endpoint ", endpoint)
+	GodotSupabase.http_request(on_request_completed).request(
+		endpoint,
+		_file_headers(options),
+		HTTPClient.METHOD_GET,
+		JSON.stringify({})
+	)
+	
+	return self
 
 func _file_headers(options: Dictionary) -> PackedStringArray:
 	var global_headers = GodotSupabase.CONFIGURATION["global"]["headers"].duplicate()
+#	global_headers.remove_at(global_headers.find("Accept: application/json"))
 	global_headers.remove_at(global_headers.find("Content-Type: application/json"))
 
 	var headers := PackedStringArray(
@@ -177,7 +213,31 @@ func _file_headers(options: Dictionary) -> PackedStringArray:
 	])
 	
 	return global_headers + headers
+
+## format: origin
+## height and width numbers
+## quality: 0 to 100
+## resize: cover | contain | fill
+func _transform_options_to_query_string(transform: Dictionary) -> String:
+	const params := []
 	
+	if transform.has("width"):
+		params.append("width=" + transform["width"])
+		
+	if transform.has("height"):
+		params.append("height=" + transform["height"])
+		
+	if transform.has("resize") and transform["resize"] in ["cover", "contain", "fill"]:
+		params.append("resize=" + transform["resize"])
+		
+	if transform.has("format"):
+		params.append("format=" + transform["format"])
+		
+	if transform.has("quality"):
+		params.append("quality=" + transform["quality"])
+	
+	
+	return "&".join(params)
 	
 func on_request_completed(result : int, response_code : int, headers : PackedStringArray, body : PackedByteArray, http_handler: HTTPRequest) -> void:
 	var data: String = body.get_string_from_utf8()
@@ -199,8 +259,10 @@ func on_request_completed(result : int, response_code : int, headers : PackedStr
 				deleted_bucket.emit(content)
 			BucketActions.EMPTY_BUCKET:
 				emptied_bucket.emit(content)
-			BucketActions.UPLOADED_FILE:
+			BucketActions.UPLOAD_FILE:
 				uploaded_file.emit(content)
+			BucketActions.DOWNLOAD_FILE:
+				downloaded_file.emit(content)
 			
 	else:
 		var supabase_error = GodotSupabaseError.new(content, current_action)

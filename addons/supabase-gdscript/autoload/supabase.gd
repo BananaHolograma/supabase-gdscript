@@ -78,7 +78,7 @@ func create_client(url, anon_key, config: Dictionary = {}):
 	CONFIGURATION["global"]["headers"].append("apikey: {key}".format({"key": anon_key}))
 	CONFIGURATION["global"]["headers"].append("Authorization: Bearer ")
 	CONFIGURATION["db"]["url"] = url.replace("http","ws")+ "/realtime/{version}/websocket".format({"version": current_api_version})
-	CONFIGURATION["storage"]["url"] = url + "/storage/{version}/bucket".format({"version": current_api_version})
+	CONFIGURATION["storage"]["url"] = url + "/storage/{version}".format({"version": current_api_version})
 	
 	CONFIGURATION.merge(config, true)
 
