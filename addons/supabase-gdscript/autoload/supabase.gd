@@ -20,7 +20,7 @@ var CONFIGURATION: Dictionary = {
 		"schema": "public"
 	},
 	"storage": {
-		"url": ""
+		"url": "",
 	},
 	"auth": {
 		"refresh_token": true,
@@ -58,7 +58,7 @@ func _ready():
 	auth = GodotSupabaseAuth.new() as GodotSupabaseAuth
 	database = GodotSupabaseDatabase.new() as GodotSupabaseDatabase
 	realtime = GodotSupabaseRealtime.new(CONFIGURATION["db"]["url"] + "?apikey=" + CONFIGURATION["anon_key"]) as GodotSupabaseRealtime
-	storage = GodotSupabaseStorage.new(CONFIGURATION["storage"]["url"] + "?apikey=" + CONFIGURATION["anon_key"]) as GodotSupabaseStorage
+	storage = GodotSupabaseStorage.new(CONFIGURATION["storage"]["url"]) as GodotSupabaseStorage
 	
 	add_child(realtime)
 	

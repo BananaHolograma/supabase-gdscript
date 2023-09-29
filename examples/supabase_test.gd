@@ -4,7 +4,12 @@ extends Node2D
 # Called when the node enters the scene tree for the first time.
 func _ready():
 	await GodotSupabase.auth.sign_in_with_email("hola4@amigos.com", "password").signed_in_with_email
-	GodotSupabase.storage.create_bucket("mi-bucket")
+#	GodotSupabase.storage.list_buckets()
+#	GodotSupabase.storage.create_bucket("buckecito")
+#	GodotSupabase.storage.update_bucket("mi-bucket", {"public": false, "file_size_limit": 2048, "allowed_mime_types": ["image/jpeg"]})
+#	GodotSupabase.storage.empty_bucket("testing-bucket").delete_bucket("testing-bucket")
+	GodotSupabase.storage.upload_file("mi-bucket", "pantalones/icon.svg", "res://icon.svg")
+#	GodotSupabase.storage.get_bucket("mi-bucket")
 #	GodotSupabase.realtime.client.connected.connect(on_connected)
 #	GodotSupabase.realtime.client.connect_client()
 #	GodotSupabase.database.from("countries").select(["id"]).Not("name", "is", null).exec()
